@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Dodger</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+<style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #111;
+            font-family: 'Courier New', monospace;
+        }
+        #game-container {
+            box-shadow: 0 0 20px rgba(0,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+<div id="game-container"></div>
+<script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            backgroundColor: '#000033',
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+
+        let player;
+        let asteroids;
+        let cursors;
+        let score = 0;
+        let scoreText;
+        let gameOver = false;
+        let spawnTimer = 0;
+        const spawnInterval = 1000;
+
+        function preload() {
+            // Create pixel art shapes programmatically
+            const graphics = this.add.graphics();
+            
+            // Player ship texture
+            graphics.lineStyle(2, 0x00ff00);
+            graphics.fillStyle(0x00ff00);
+            graphics.beginPath();
+            graphics.moveTo(0, -15);
+            graphics.lineTo(10, 15);
+            graphics.lineTo(-10, 15);
+            graphics.closePath();
+            graphics.strokePath();
+            graphics.fillPath();
+            graphics.generateTexture('ship', 20, 30);
+            graphics.clear();
+
+            // Asteroid texture
+            graphics.lineStyle(2, 0xff0000);
+            graphics.fillStyle(0xff0000);
+            graphics.beginPath();
+            graphics.moveTo(-10, -10);
+            graphics.lineTo(10, -10);
+            graphics.lineTo(10, 10);
+            graphics.lineTo(-10, 10);
+            graphics.closePath();
+            graphics.strokePath();
+            graphics.fillPath();
+            graphics.generateTexture('asteroid', 20, 20);
+        }
+
+        function create() {
+            player = this.physics.add.sprite(400, 550, 'ship');
+            player.setCollideWorldBounds(true);
+
+            asteroids = this.physics.add.group();
+
+            cursors = this.input.keyboard.createCursorKeys();
+
+            scoreText = this.add.text(16, 16, 'Score: 0', { 
+                fontSize: '32px', 
+                fill: '#fff' 
+            });
+
+            this.physics.add.collider(player, asteroids, hitAsteroid, null, this);
+        }
+
+        function update(time) {
+            if (gameOver) {
+                if (cursors.space.isDown) {
+                    restartGame.call(this);
+                }
+                return;
+            }
+
+            // Player movement
+            if (cursors.left.isDown) {
+                player.setVelocityX(-300);
+            } else if (cursors.right.isDown) {
+                player.setVelocityX(300);
+            } else {
+                player.setVelocityX(0);
+            }
+
+            // Spawn asteroids
+            spawnTimer += this.game.loop.delta;
+            if (spawnTimer >= spawnInterval) {
+                spawnAsteroid.call(this);
+                spawnTimer = 0;
+            }
+
+            // Update score
+            score += 1;
+            scoreText.setText('Score: ' + score);
+
+            // Remove off-screen asteroids
+            asteroids.children.each(function(asteroid) {
+                if (asteroid.y > 600) {
+                    asteroid.destroy();
+                }
+            });
+        }
+
+        function spawnAsteroid() {
+            const x = Phaser.Math.Between(0, 800);
+            const asteroid = asteroids.create(x, -20, 'asteroid');
+            asteroid.setVelocityY(200 + score/100);
+        }
+
+        function hitAsteroid() {
+            this.physics.pause();
+            player.setTint(0xff0000);
+            gameOver = true;
+
+            const gameOverText = this.add.text(400, 300, 'Game Over\nPress SPACE to restart', {
+                fontSize: '64px',
+                fill: '#fff',
+                align: 'center'
+            });
+            gameOverText.setOrigin(0.5);
+        }
+
+        function restartGame() {
+            this.scene.restart();
+            score = 0;
+            gameOver = false;
+            spawnTimer = 0;
+        }
+    </script>
+</body>
+</html>
